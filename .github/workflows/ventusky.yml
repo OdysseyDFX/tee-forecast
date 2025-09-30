@@ -2,8 +2,8 @@ name: Build Ventusky Tee Forecast
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "0 * * * *"   # optional hourly
+  # schedule:
+  #   - cron: "0 * * * *"  # optional: uncomment to auto-run every hour
 
 permissions:
   contents: read
@@ -18,15 +18,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      # This auto-enables Pages for the repo
-      - name: Configure Pages
-        uses: actions/configure-pages@v4
-        with:
-          enablement: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -38,7 +33,7 @@ jobs:
 
       - name: Build Ventusky page
         env:
-          GIST_URL: ${{ secrets.GIST_URL }}   # your secret
+          GIST_URL: ${{ secrets.GIST_URL }}
         run: node build-ventusky.js
 
       - name: Upload GitHub Pages artifact
