@@ -1,5 +1,6 @@
-// build-ventusky.js — Opens Ventusky at next tee time, correctly zoomed on The Oxfordshire
-// Output: /tee-forecast/index.html
+// build-ventusky.js — Redirect to Ventusky at the next tee time
+// Uses query params for time (reliable) + dual zoom hints (p=…;ZOOM and z=…)
+// Output: tee-forecast/index.html
 
 import fs from "fs/promises";
 
@@ -8,11 +9,11 @@ const DATA_URL    = "https://gist.githubusercontent.com/OdysseyDFX/d442348046a1a
 const OUTPUT_DIR  = "tee-forecast";
 const OUTPUT_FILE = `${OUTPUT_DIR}/index.html`;
 
-// The Oxfordshire Golf Club
+// The Oxfordshire
 const LAT   = 51.72987;
 const LON   = -1.01528;
-const ZOOM  = 15;          // 14–16 are good for course view
-const LAYER = "rain-1h";   // layer key
+const ZOOM  = 15;          // try 14–16
+const LAYER = "rain-1h";   // 1‑hour precipitation
 
 // ---- Helpers ----
 const pad2 = n => String(n).padStart(2, "0");
@@ -24,26 +25,26 @@ const data = await res.json();
 const teeISO = data?.nextTee?.whenISO;
 if (!teeISO) throw new Error("No next tee time found in JSON");
 
-// Use UTC (Ventusky’s time parameters are UTC-hour based)
+// Build UTC time params (Ventusky expects UTC hour)
 const d = new Date(teeISO);
 const yyyy = d.getUTCFullYear();
-const mm   = pad2(d.getUTCMonth()+1);
+const mm   = pad2(d.getUTCMonth() + 1);
 const dd   = pad2(d.getUTCDate());
 const HH   = pad2(d.getUTCHours());
 
-// Build URL:
-//  - PATH: lat/lon/zoom  => enforces zoom on mobile
-//  - QUERY: layer + ALL time params (t + d + h) + play=0
-const base = `https://www.ventusky.com/${LAT}/${LON}/${ZOOM}`;
+// Query-style URL (time reliable) + dual zoom hints
 const q = new URLSearchParams({
+  p: `${LAT};${LON};${ZOOM}`,          // location + zoom (hint #1)
   l: LAYER,
-  t: `${yyyy}${mm}${dd}/${HH}`, // classic param used by many embeds
-  d: `${yyyy}-${mm}-${dd}`,     // UI date param (helps on iOS)
-  h: HH,                        // UI hour param (helps on iOS)
+  t: `${yyyy}${mm}${dd}/${HH}`,        // classic time param
+  d: `${yyyy}-${mm}-${dd}`,            // UI date param (iOS-friendly)
+  h: HH,                               // UI hour param (iOS-friendly)
+  z: String(ZOOM),                     // zoom hint #2
   play: "0",
-  _: Date.now().toString()      // cache-buster while testing
+  _: Date.now().toString()             // cache buster
 });
-const ventuskyURL = `${base}?${q.toString()}`;
+
+const ventuskyURL = `https://www.ventusky.com/?${q.toString()}`;
 
 const html = `<!DOCTYPE html>
 <html lang="en">
