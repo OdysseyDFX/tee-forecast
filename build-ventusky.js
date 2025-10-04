@@ -8,11 +8,11 @@ const DATA_URL    = "https://gist.githubusercontent.com/OdysseyDFX/d442348046a1a
 const OUTPUT_DIR  = "tee-forecast";
 const OUTPUT_FILE = `${OUTPUT_DIR}/index.html`;
 
-// The Oxfordshire (approximate lat/lon for Ventusky)
-const LAT    = 51.733;
-const LON    = -1.037;
-const LAYER  = "rain-1h"; // Ventusky layer (1-hour rainfall)
-const ZOOM   = 13;        // Optional zoom level (used in some builds)
+// The Oxfordshire Golf Club coordinates
+const LAT   = 51.72987;
+const LON   = -1.01528;
+const ZOOM  = 14;           // 14–15 = golf-course zoom level
+const LAYER = "rain-1h";    // 1-hour precipitation layer
 
 // ---- Helpers ----
 function pad2(n) {
@@ -32,17 +32,17 @@ if (!teeISO) {
 const d = new Date(teeISO);
 const tParam = `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}/${pad2(d.getUTCHours())}`;
 
-// Build the Ventusky URL with query parameters
+// Build Ventusky URL with full location + zoom
 const query = new URLSearchParams({
-  p: `${LAT};${LON}`,
+  p: `${LAT};${LON};${ZOOM}`,
   l: LAYER,
   t: tParam,
-  play: "0",               // prevents autoplay to current time
+  play: "0",
   _: Date.now().toString() // cache-buster while testing
 });
 const ventuskyURL = `https://www.ventusky.com/?${query.toString()}`;
 
-// Output HTML
+// Output HTML redirect page
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,4 +68,4 @@ await fs.mkdir(OUTPUT_DIR, { recursive: true });
 await fs.writeFile(OUTPUT_FILE, html);
 
 console.log("✅ Redirect page generated:", OUTPUT_FILE);
-console.log("➡️  " + ventuskyURL);
+console.log("➡️ ", ventuskyURL);
