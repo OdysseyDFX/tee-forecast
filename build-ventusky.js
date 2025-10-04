@@ -4,53 +4,68 @@
 import fs from "fs/promises";
 
 // ---- Config ----
-const DATA_URL = "https://gist.githubusercontent.com/OdysseyDFX/d442348046a1a5f66bf882fb8a7e2d51/raw/iggolf.json";
-const OUTPUT_FILE = "tee-forecast/index.html";
-const ZOOM_LEVEL = 13;
+const DATA_URL    = "https://gist.githubusercontent.com/OdysseyDFX/d442348046a1a5f66bf882fb8a7e2d51/raw/iggolf.json";
+const OUTPUT_DIR  = "tee-forecast";
+const OUTPUT_FILE = `${OUTPUT_DIR}/index.html`;
+
+// The Oxfordshire (approximate lat/lon for Ventusky)
+const LAT    = 51.733;
+const LON    = -1.037;
+const LAYER  = "rain-1h"; // Ventusky layer (1-hour rainfall)
+const ZOOM   = 13;        // Optional zoom level (used in some builds)
 
 // ---- Helpers ----
-function formatDateYYYYMMDD(date) {
-  return date.toISOString().split("T")[0];
-}
-
-function pad(num) {
-  return num.toString().padStart(2, "0");
+function pad2(n) {
+  return String(n).padStart(2, "0");
 }
 
 // ---- Main ----
 const res = await fetch(DATA_URL);
 const data = await res.json();
 
-const nextTee = data?.nextTee;
-if (!nextTee || !nextTee.whenISO) {
+const teeISO = data?.nextTee?.whenISO;
+if (!teeISO) {
   throw new Error("No next tee time found in JSON");
 }
 
-const when = new Date(nextTee.whenISO);
-const dateStr = formatDateYYYYMMDD(when);
-const hourStr = pad(when.getHours());
+// Convert to UTC-based Ventusky t=YYYYMMDD/HH format
+const d = new Date(teeISO);
+const tParam = `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}/${pad2(d.getUTCHours())}`;
 
-// Update these coordinates if needed
-const latitude = 51.733;
-const longitude = -1.037;
+// Build the Ventusky URL with query parameters
+const query = new URLSearchParams({
+  p: `${LAT};${LON}`,
+  l: LAYER,
+  t: tParam,
+  play: "0",               // prevents autoplay to current time
+  _: Date.now().toString() // cache-buster while testing
+});
+const ventuskyURL = `https://www.ventusky.com/?${query.toString()}`;
 
-const ventuskyURL = `https://www.ventusky.com/${dateStr}/${hourStr}/${latitude}/${longitude}/${ZOOM_LEVEL}/rain`;
+// Output HTML
+const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="refresh" content="0; URL='${ventuskyURL}'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redirecting to Ventusky Forecast…</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <p>Redirecting to <a href="${ventuskyURL}">Ventusky forecast at next tee time</a>…</p>
+  <p><small>Tee time (UTC): ${teeISO}</small></p>
+</body>
+</html>`;
 
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; URL='${ventuskyURL}'" />
-    <title>Redirecting to Ventusky Forecast...</title>
-  </head>
-  <body>
-    <p>Redirecting to <a href="${ventuskyURL}">${ventuskyURL}</a></p>
-  </body>
-</html>
-`;
-
-await fs.mkdir("tee-forecast", { recursive: true });
-await fs.writeFile(OUTPUT_FILE, html.trim());
+// Write to disk
+await fs.mkdir(OUTPUT_DIR, { recursive: true });
+await fs.writeFile(OUTPUT_FILE, html);
 
 console.log("✅ Redirect page generated:", OUTPUT_FILE);
 console.log("➡️  " + ventuskyURL);
