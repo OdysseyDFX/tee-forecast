@@ -12,7 +12,7 @@ const OUTPUT_FILE = `${OUTPUT_DIR}/index.html`;
 // The Oxfordshire
 const LAT   = 51.72987;
 const LON   = -1.01528;
-const ZOOM  = 15;          // try 14–16
+const ZOOM  = 12;          // try 14–16
 const LAYER = "rain-1h";   // 1‑hour precipitation
 
 // ---- Helpers ----
