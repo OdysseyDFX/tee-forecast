@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ventusky – Next Tee</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;line-height:1.4}
+    .muted{opacity:.7}
+    code{background:#0001;padding:2px 4px;border-radius:4px}
+  </style>
+</head>
+<body>
+  <h1>Opening Ventusky…</h1>
+  <p id="status" class="muted">Fetching next tee…</p>
+
+  <script>
+    (async () => {
+      const DATA_URL = "https://gist.githubusercontent.com/OdysseyDFX/d442348046a1a5f66bf882fb8a7e2d51/raw/iggolf.json";
+      const LAT = 51.72987, LON = -1.01528, ZOOM = 12, LAYER = "rain-1h";
+      const pad2 = n => String(n).padStart(2,"0");
+
+      const res = await fetch(DATA_URL + "?_=" + Date.now(), { cache: "no-store" });
+      let data; try { data = await res.json(); } catch {}
+
+      let url;
+      if (data?.nextTee?.whenISO) {
+        const d = new Date(data.nextTee.whenISO); // UTC
+        const YYYY = d.getUTCFullYear();
+        const MM   = pad2(d.getUTCMonth()+1);
+        const DD   = pad2(d.getUTCDate());
+        const HH   = pad2(d.getUTCHours());
+        const q = new URLSearchParams({
+          p: `${LAT};${LON};${ZOOM}`,
+          l: LAYER,
+          t: `${YYYY}${MM}${DD}/${HH}`,
+          d: `${YYYY}-${MM}-${DD}`,
+          h: HH,
+          z: String(ZOOM),
+          play: "0",
+          _: Date.now().toString()
+        });
+        url = `https://www.ventusky.com/?${q.toString()}`;
+        document.getElementById("status").innerHTML =
+          `Next tee (UTC): <code>${data.nextTee.whenISO}</code><br>Redirecting…`;
+      } else {
+        url = `https://www.ventusky.com/?p=${LAT};${LON};${ZOOM}&l=${
