@@ -23,28 +23,61 @@
       const LAT = 51.72987, LON = -1.01528, ZOOM = 12, LAYER = "rain-1h";
       const pad2 = n => String(n).padStart(2,"0");
 
-      const res = await fetch(DATA_URL + "?_=" + Date.now(), { cache: "no-store" });
-      let data; try { data = await res.json(); } catch {}
+      function go(url, msg){
+        if (msg) document.getElementById("status").textContent = msg;
+        location.replace(url);
+      }
 
-      let url;
-      if (data?.nextTee?.whenISO) {
-        const d = new Date(data.nextTee.whenISO); // UTC
+      // Fallback: open current conditions if anything goes wrong
+      const urlNow = `https://www.ventusky.com/?p=${LAT};${LON};${ZOOM}&l=${LAYER}`;
+
+      try {
+        // Timeout + no-store to avoid cache hangs
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 6000);
+
+        const res = await fetch(DATA_URL + "?_=" + Date.now(), {
+          signal: controller.signal,
+          cache: "no-store",
+          mode: "cors",
+          redirect: "follow",
+          headers: { "Accept": "application/json" }
+        });
+        clearTimeout(t);
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        let data;
+        try { data = await res.json(); } catch { throw new Error("Bad JSON"); }
+
+        const iso = data?.nextTee?.whenISO;
+        if (!iso) return go(urlNow, "No next tee found. Opening current weather…");
+
+        const d = new Date(iso); // ISO is UTC
         const YYYY = d.getUTCFullYear();
         const MM   = pad2(d.getUTCMonth()+1);
         const DD   = pad2(d.getUTCDate());
         const HH   = pad2(d.getUTCHours());
+
         const q = new URLSearchParams({
           p: `${LAT};${LON};${ZOOM}`,
           l: LAYER,
-          t: `${YYYY}${MM}${DD}/${HH}`,
-          d: `${YYYY}-${MM}-${DD}`,
-          h: HH,
+          t: `${YYYY}${MM}${DD}/${HH}`,  // authoritative time (UTC)
+          d: `${YYYY}-${MM}-${DD}`,      // UI date hint
+          h: HH,                         // UI hour hint
           z: String(ZOOM),
           play: "0",
           _: Date.now().toString()
         });
-        url = `https://www.ventusky.com/?${q.toString()}`;
+        const url = `https://www.ventusky.com/?${q.toString()}`;
+
         document.getElementById("status").innerHTML =
-          `Next tee (UTC): <code>${data.nextTee.whenISO}</code><br>Redirecting…`;
-      } else {
-        url = `https://www.ventusky.com/?p=${LAT};${LON};${ZOOM}&l=${
+          `Next tee (UTC): <code>${iso}</code><br>Redirecting…`;
+        location.replace(url);
+      } catch (e) {
+        go(urlNow, "Couldn’t load latest tee time. Opening current weather…");
+      }
+    })();
+  </script>
+</body>
+</html>
